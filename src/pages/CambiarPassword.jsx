@@ -1,0 +1,45 @@
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { C, s } from '../lib/styles'
+
+export default function CambiarPassword({ onDone }) {
+  const [pass, setPass] = useState('')
+  const [conf, setConf] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+
+  const handleChange = async () => {
+    if (pass.length < 6) return setErr('La contraseña debe tener al menos 6 caracteres.')
+    if (pass !== conf) return setErr('Las contraseñas no coinciden.')
+    setLoading(true); setErr('')
+    const { error } = await supabase.auth.updateUser({ password: pass })
+    if (error) { setErr('Error al cambiar contraseña.'); setLoading(false); return }
+    await supabase.from('perfiles').update({ primer_ingreso: false }).eq('id', (await supabase.auth.getUser()).data.user.id)
+    onDone()
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: `linear-gradient(160deg, ${C.darkRed} 0%, ${C.red} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ width: '100%', maxWidth: 380, background: C.white, borderRadius: 16, padding: '32px 24px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🔐</div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: C.darkRed }}>Bienvenido/a</h2>
+          <p style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Es tu primer ingreso. Por favor crea una nueva contraseña personal.</p>
+        </div>
+
+        {err && <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>{err}</div>}
+
+        <label style={s.label}>Nueva contraseña</label>
+        <input style={s.input} type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="Mínimo 6 caracteres" />
+
+        <label style={s.label}>Confirmar contraseña</label>
+        <input style={s.input} type="password" value={conf} onChange={e => setConf(e.target.value)} placeholder="Repite tu contraseña" />
+
+        <button onClick={handleChange} disabled={loading} style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}>
+          {loading ? 'Guardando...' : 'Guardar contraseña'}
+        </button>
+      </div>
+    </div>
+  )
+}
