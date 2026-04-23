@@ -46,12 +46,12 @@ function GestionVoluntarios() {
 
   const save = async () => {
     if (!f.nombres || !f.apellidos) return alert('Nombres y apellidos son obligatorios.')
-    if (form === 'new' && !f.email) return alert('El correo es obligatorio.')
     setSaving(true)
 
     if (form === 'new') {
+      const emailFicticio = `${usuario}@voluntarios.cruzrojapisco.pe`
       const { data: signupData, error: signupErr } = await supabase.auth.signUp({
-        email: f.email, password: tempPass,
+        email: emailFicticio, password: tempPass,
         options: { data: { rol: 'voluntario' } }
       })
       if (signupErr && !signupErr.message.includes('already')) {
@@ -60,10 +60,10 @@ function GestionVoluntarios() {
       }
       const userId = signupData?.user?.id
       if (userId) {
-        await supabase.from('voluntarios').upsert({ ...f, id: userId })
+        await supabase.from('voluntarios').upsert({ ...f, id: userId, email: f.email || emailFicticio })
         await supabase.from('perfiles').upsert({ id: userId, rol: 'voluntario', primer_ingreso: true })
       }
-      alert(`✅ Voluntario creado exitosamente.\n\n👤 Usuario: ${usuario}\n📧 Correo: ${f.email}\n🔑 Contraseña temporal: ${tempPass}\n\nEl voluntario deberá cambiarla en su primer ingreso.`)
+      alert('Voluntario creado! Usuario: ' + usuario + ' | Contrasena: ' + tempPass)
     } else {
       await supabase.from('voluntarios').update(f).eq('id', form)
     }
@@ -93,7 +93,7 @@ function GestionVoluntarios() {
         </div>
       )}
       <Field label="DNI" fkey="dni" value={f.dni} onChange={handleField}/>
-      {form==='new' && <Field label="Correo electrónico" fkey="email" type="email" required value={f.email} onChange={handleField}/>}
+      {<Field label="Correo electrónico" fkey="email" type="email" required value={f.email} onChange={handleField}/>}
       <Field label="Fecha de nacimiento" fkey="fecha_nacimiento" type="date" value={f.fecha_nacimiento} onChange={handleField}/>
       <Field label="Teléfono" fkey="telefono" value={f.telefono} onChange={handleField}/>
       <Field label="Dirección" fkey="direccion" value={f.direccion} onChange={handleField}/>
@@ -538,6 +538,4 @@ export default function PanelCoordinador({ user, onLogout }) {
       </div>
     </div>
   )
-}
-
 }
