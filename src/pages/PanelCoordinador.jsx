@@ -3,10 +3,14 @@ import { supabase } from '../lib/supabase'
 import { C, s, fmtMins, initials } from '../lib/styles'
 import { Users, CalendarDays, ClipboardCheck, BarChart2, LogOut, Plus, ArrowLeft, Trash2, Edit2, Check, X, Download } from 'lucide-react'
 
-const uid = () => Math.random().toString(36).slice(2)
 const today = () => new Date().toISOString().slice(0, 10)
 
-// Campo de formulario fuera del componente para evitar pérdida de foco
+const genUsuario = (nombres, apellidos) => {
+  if (!nombres || !apellidos) return ''
+  const norm = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,'')
+  return norm(nombres.trim().split(' ')[0]).slice(0,1) + norm(apellidos.trim().split(' ')[0])
+}
+
 function Field({ label, fkey, type='text', required=false, value, onChange }) {
   return (
     <div>
@@ -23,7 +27,6 @@ function GestionVoluntarios() {
   const [f, setF] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [creatingAuth, setCreatingAuth] = useState(false)
 
   const load = async () => {
     const { data } = await supabase.from('voluntarios').select('*').order('apellidos')
@@ -36,41 +39,34 @@ function GestionVoluntarios() {
 
   const open = (v = null) => { setF(v ? {...v} : emptyF); setForm(v?.id || 'new') }
 
+  const handleField = (key, val) => setF(prev => ({...prev, [key]: val}))
+
+  const usuario = genUsuario(f.nombres, f.apellidos)
+  const tempPass = usuario ? `CruzRoja.${usuario}!` : 'CruzRoja2024!'
+
   const save = async () => {
     if (!f.nombres || !f.apellidos) return alert('Nombres y apellidos son obligatorios.')
+    if (form === 'new' && !f.email) return alert('El correo es obligatorio.')
     setSaving(true)
 
     if (form === 'new') {
-      if (!f.email) return alert('El correo es obligatorio para crear el usuario.')
-      setCreatingAuth(true)
-      // Crear usuario en auth con contraseña temporal
-      const tempPass = 'CruzRoja2024!'
-      const { data: authData, error: authErr } = await supabase.auth.admin
-        ? supabase.auth.signUp({ email: f.email, password: tempPass, options: { data: { rol: 'voluntario' } } })
-        : { data: null, error: null }
-
-      // Usar función de Supabase edge o insertar directo si tiene permisos
       const { data: signupData, error: signupErr } = await supabase.auth.signUp({
         email: f.email, password: tempPass,
         options: { data: { rol: 'voluntario' } }
       })
-
       if (signupErr && !signupErr.message.includes('already')) {
-        alert('Error creando usuario: ' + signupErr.message)
-        setSaving(false); setCreatingAuth(false); return
+        alert('Error: ' + signupErr.message)
+        setSaving(false); return
       }
-
       const userId = signupData?.user?.id
       if (userId) {
         await supabase.from('voluntarios').upsert({ ...f, id: userId })
         await supabase.from('perfiles').upsert({ id: userId, rol: 'voluntario', primer_ingreso: true })
       }
-      setCreatingAuth(false)
-      alert(`✅ Voluntario creado.\nCorreo: ${f.email}\nContraseña temporal: CruzRoja2024!\n\nEl voluntario deberá cambiarla en su primer ingreso.`)
+      alert(`✅ Voluntario creado exitosamente.\n\n👤 Usuario: ${usuario}\n📧 Correo: ${f.email}\n🔑 Contraseña temporal: ${tempPass}\n\nEl voluntario deberá cambiarla en su primer ingreso.`)
     } else {
       await supabase.from('voluntarios').update(f).eq('id', form)
     }
-
     setSaving(false); setForm(null); load()
   }
 
@@ -79,8 +75,6 @@ function GestionVoluntarios() {
     await supabase.from('voluntarios').delete().eq('id', id)
     load()
   }
-
-  const handleField = (key, val) => setF(prev => ({...prev, [key]: val}))
 
   if (form) return (
     <div>
@@ -91,6 +85,13 @@ function GestionVoluntarios() {
         <Field label="Nombres" fkey="nombres" required value={f.nombres} onChange={handleField}/>
         <Field label="Apellidos" fkey="apellidos" required value={f.apellidos} onChange={handleField}/>
       </div>
+      {form==='new' && usuario && (
+        <div style={{background:'#fce8e8',borderRadius:8,padding:'10px 14px',marginBottom:12}}>
+          <div style={{fontSize:12,color:C.muted,marginBottom:2}}>Usuario generado automáticamente</div>
+          <div style={{fontWeight:700,color:C.red,fontSize:16}}>👤 {usuario}</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>🔑 Contraseña temporal: <strong>{tempPass}</strong></div>
+        </div>
+      )}
       <Field label="DNI" fkey="dni" value={f.dni} onChange={handleField}/>
       {form==='new' && <Field label="Correo electrónico" fkey="email" type="email" required value={f.email} onChange={handleField}/>}
       <Field label="Fecha de nacimiento" fkey="fecha_nacimiento" type="date" value={f.fecha_nacimiento} onChange={handleField}/>
@@ -110,7 +111,7 @@ function GestionVoluntarios() {
       <Field label="Contacto de emergencia (nombre)" fkey="contacto_emergencia_nombre" value={f.contacto_emergencia_nombre} onChange={handleField}/>
       <Field label="Contacto de emergencia (teléfono)" fkey="contacto_emergencia_telefono" value={f.contacto_emergencia_telefono} onChange={handleField}/>
       <button onClick={save} disabled={saving} style={{...s.btnPrimary, opacity: saving?0.7:1}}>
-        {saving ? (creatingAuth ? 'Creando usuario...' : 'Guardando...') : 'Guardar'}
+        {saving ? 'Guardando...' : 'Guardar'}
       </button>
       <button onClick={() => setForm(null)} style={s.btnSecondary}>Cancelar</button>
     </div>
@@ -537,4 +538,6 @@ export default function PanelCoordinador({ user, onLogout }) {
       </div>
     </div>
   )
+}
+
 }
