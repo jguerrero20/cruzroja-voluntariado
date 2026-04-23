@@ -6,6 +6,16 @@ import { Users, CalendarDays, ClipboardCheck, BarChart2, LogOut, Plus, ArrowLeft
 const uid = () => Math.random().toString(36).slice(2)
 const today = () => new Date().toISOString().slice(0, 10)
 
+// Campo de formulario fuera del componente para evitar pérdida de foco
+function Field({ label, fkey, type='text', required=false, value, onChange }) {
+  return (
+    <div>
+      <label style={s.label}>{label}{required ? ' *' : ''}</label>
+      <input style={s.input} type={type} value={value||''} onChange={e => onChange(fkey, e.target.value)} />
+    </div>
+  )
+}
+
 // ── VOLUNTARIOS ──────────────────────────────────────────────────────────────
 function GestionVoluntarios() {
   const [vols, setVols] = useState([])
@@ -70,40 +80,35 @@ function GestionVoluntarios() {
     load()
   }
 
-  const Field = ({ label, fkey, type='text', required=false }) => (
-    <div>
-      <label style={s.label}>{label}{required ? ' *' : ''}</label>
-      <input style={s.input} type={type} value={f[fkey]||''} onChange={e => setF({...f, [fkey]: e.target.value})} />
-    </div>
-  )
+  const handleField = (key, val) => setF(prev => ({...prev, [key]: val}))
 
   if (form) return (
     <div>
       <button onClick={() => setForm(null)} style={s.back}><ArrowLeft size={16}/> Volver</button>
       <h3 style={s.sectionTitle}>{form==='new' ? 'Nuevo voluntario' : 'Editar voluntario'}</h3>
-      <Field label="Código" fkey="codigo"/>
+      <Field label="Código" fkey="codigo" value={f.codigo} onChange={handleField}/>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-        <Field label="Nombres" fkey="nombres" required/>
-        <Field label="Apellidos" fkey="apellidos" required/>
+        <Field label="Nombres" fkey="nombres" required value={f.nombres} onChange={handleField}/>
+        <Field label="Apellidos" fkey="apellidos" required value={f.apellidos} onChange={handleField}/>
       </div>
-      <Field label="DNI" fkey="dni"/>
-      {form==='new' && <Field label="Correo electrónico" fkey="email" type="email" required/>}
-      <Field label="Fecha de nacimiento" fkey="fecha_nacimiento" type="date"/>
-      <Field label="Teléfono" fkey="telefono"/>
-      <Field label="Dirección" fkey="direccion"/>
+      <Field label="DNI" fkey="dni" value={f.dni} onChange={handleField}/>
+      {form==='new' && <Field label="Correo electrónico" fkey="email" type="email" required value={f.email} onChange={handleField}/>}
+      <Field label="Fecha de nacimiento" fkey="fecha_nacimiento" type="date" value={f.fecha_nacimiento} onChange={handleField}/>
+      <Field label="Teléfono" fkey="telefono" value={f.telefono} onChange={handleField}/>
+      <Field label="Dirección" fkey="direccion" value={f.direccion} onChange={handleField}/>
       <label style={s.label}>Área de intervención</label>
-      <select style={s.select} value={f.area_intervencion||''} onChange={e => setF({...f,area_intervencion:e.target.value})}>
+      <select style={s.select} value={f.area_intervencion||''} onChange={e => setF(prev=>({...prev,area_intervencion:e.target.value}))}>
         <option value="">Seleccionar...</option>
         {['Gestión de Riesgos y Desastres','Salud y Seguridad Humana','Desarrollo Comunitario','Juventud','Género'].map(a => <option key={a}>{a}</option>)}
       </select>
       <label style={s.label}>Nivel de formación</label>
-      <select style={s.select} value={f.nivel_formacion||''} onChange={e => setF({...f,nivel_formacion:e.target.value})}>
+      <select style={s.select} value={f.nivel_formacion||''} onChange={e => setF(prev=>({...prev,nivel_formacion:e.target.value}))}>
         <option value="">Seleccionar...</option>
         {['Formación Básica Institucional','Voluntario Activo','Instructor','Especializado'].map(n => <option key={n}>{n}</option>)}
       </select>
-      <Field label="Fecha de ingreso" fkey="fecha_ingreso" type="date"/>
-      <Field label="Contacto de emergencia (nombre)" fkey="contacto_emergencia_nombre"/>
-      <Field label="Contacto de emergencia (teléfono)" fkey="contacto_emergencia_telefono"/>
+      <Field label="Fecha de ingreso" fkey="fecha_ingreso" type="date" value={f.fecha_ingreso} onChange={handleField}/>
+      <Field label="Contacto de emergencia (nombre)" fkey="contacto_emergencia_nombre" value={f.contacto_emergencia_nombre} onChange={handleField}/>
+      <Field label="Contacto de emergencia (teléfono)" fkey="contacto_emergencia_telefono" value={f.contacto_emergencia_telefono} onChange={handleField}/>
       <button onClick={save} disabled={saving} style={{...s.btnPrimary, opacity: saving?0.7:1}}>
         {saving ? (creatingAuth ? 'Creando usuario...' : 'Guardando...') : 'Guardar'}
       </button>
