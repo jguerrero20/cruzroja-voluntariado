@@ -10,21 +10,20 @@ export default function App() {
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const loadPerfil = async (u) => {
+    const { data: p } = await supabase.from('perfiles').select('*').eq('id', u.id).single()
+    setUser(u)
+    setPerfil(p)
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data: p } = await supabase.from('perfiles').select('*').eq('id', session.user.id).single()
-        setUser(session.user); setPerfil(p)
-      }
+      if (session?.user) await loadPerfil(session.user)
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: p } = await supabase.from('perfiles').select('*').eq('id', session.user.id).single()
-        setUser(session.user); setPerfil(p)
-      } else {
-        setUser(null); setPerfil(null)
-      }
+      if (session?.user) await loadPerfil(session.user)
+      else { setUser(null); setPerfil(null) }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -37,8 +36,7 @@ export default function App() {
   }
 
   const handlePasswordChanged = async () => {
-    const { data: p } = await supabase.from('perfiles').select('*').eq('id', user.id).single()
-    setPerfil(p)
+    if (user) await loadPerfil(user)
   }
 
   if (loading) return (
